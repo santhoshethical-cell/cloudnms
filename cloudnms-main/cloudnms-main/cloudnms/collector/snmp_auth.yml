@@ -1,0 +1,12 @@
+# /etc/alloy/snmp_auth.yml   (chmod 640, chown root:alloy)
+# Merged into Alloy's built-in SNMP config. Replace both placeholders
+# with the SAME passwords you set on EDGE-R1 and SRV01.
+auths:
+  cloudnms_v3:
+    version: 3
+    security_level: authPriv
+    username: nmsuser
+    password: "<SNMP_AUTH_PASS>"
+    auth_protocol: SHA
+    priv_protocol: AES
+    priv_password: "<SNMP_PRIV_PASS>"

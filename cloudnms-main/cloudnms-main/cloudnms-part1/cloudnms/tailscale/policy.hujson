@@ -1,0 +1,54 @@
+// CloudNMS Tailscale policy - paste into admin console > Access controls.
+// Least privilege: the collector may reach ONLY the hotel monitoring ports.
+{
+  "tagOwners": {
+    "tag:collector":  ["autogroup:admin"],
+    "tag:siterouter": ["autogroup:admin"],
+  },
+
+  // SRV01's subnet route is approved automatically.
+  "autoApprovers": {
+    "routes": {
+      "172.16.0.0/16": ["tag:siterouter"],
+    },
+  },
+
+  "acls": [
+    // SNMPv3 to EDGE-R1 + SRV01, blackbox_exporter on SRV01
+    {
+      "action": "accept",
+      "src":    ["tag:collector"],
+      "proto":  "udp",
+      "dst":    ["172.16.99.1:161", "172.16.99.10:161"],
+    },
+    {
+      "action": "accept",
+      "src":    ["tag:collector"],
+      "proto":  "tcp",
+      "dst":    ["172.16.99.10:9115"],
+    },
+    // ICMP reachability probes to all 4 site devices (fixes the
+    // earlier gap: PC-STAFF / PC-GUEST are outside VLAN 99)
+    {
+      "action": "accept",
+      "src":    ["tag:collector"],
+      "proto":  "icmp",
+      "dst":    ["172.16.99.1:*", "172.16.99.10:*", "172.16.10.10:*", "172.16.20.10:*"],
+    },
+    // Admin (you) -> SSH to the collector and SRV01 only
+    {
+      "action": "accept",
+      "src":    ["autogroup:admin"],
+      "dst":    ["tag:collector:22", "tag:siterouter:22"],
+    },
+  ],
+
+  "ssh": [
+    {
+      "action": "accept",
+      "src":    ["autogroup:admin"],
+      "dst":    ["tag:collector", "tag:siterouter"],
+      "users":  ["root", "autogroup:nonroot"],
+    },
+  ],
+}

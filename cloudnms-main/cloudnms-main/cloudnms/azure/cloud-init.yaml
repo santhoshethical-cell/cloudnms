@@ -1,0 +1,35 @@
+#cloud-config
+# vm-collector first boot: installs Tailscale + Grafana Alloy. No secrets here.
+package_update: true
+package_upgrade: true
+packages: [curl, gpg, snmp, iputils-ping, nmap, jq]
+
+write_files:
+  # ICMP probes need raw sockets
+  - path: /etc/systemd/system/alloy.service.d/10-netraw.conf
+    content: |
+      [Service]
+      AmbientCapabilities=CAP_NET_RAW
+      CapabilityBoundingSet=CAP_NET_RAW
+  # Secrets file - filled in later by you, over Tailscale SSH
+  - path: /etc/default/alloy
+    permissions: '0640'
+    content: |
+      CONFIG_FILE="/etc/alloy/config.alloy"
+      CUSTOM_ARGS=""
+      RESTART_ON_UPGRADE=true
+      GCLOUD_RW_URL="<GRAFANA_PROMETHEUS_REMOTE_WRITE_URL>"
+      GCLOUD_RW_USER="<GRAFANA_PROMETHEUS_USERNAME>"
+      GCLOUD_RW_TOKEN="<GRAFANA_ACCESS_POLICY_TOKEN>"
+
+runcmd:
+  - curl -fsSL https://tailscale.com/install.sh | sh
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://apt.grafana.com/gpg.key | gpg --dearmor -o /etc/apt/keyrings/grafana.gpg
+  - echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" > /etc/apt/sources.list.d/grafana.list
+  - apt-get update && apt-get install -y alloy
+  - chgrp alloy /etc/default/alloy
+  - systemctl daemon-reload
+  # Alloy stays stopped until the real config + secrets are in place
+  - systemctl enable alloy
+  - systemctl stop alloy
